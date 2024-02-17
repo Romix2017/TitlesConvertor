@@ -1,0 +1,25 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.8.34330.188
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TitlesConvertor", "TitlesConvertor.csproj", "{9D70B6FA-40D5-44F4-B720-D8A3FD5B5DF2}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{9D70B6FA-40D5-44F4-B720-D8A3FD5B5DF2}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{9D70B6FA-40D5-44F4-B720-D8A3FD5B5DF2}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{9D70B6FA-40D5-44F4-B720-D8A3FD5B5DF2}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{9D70B6FA-40D5-44F4-B720-D8A3FD5B5DF2}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {87A24503-F218-4956-BAFA-22CED126F75D}
+	EndGlobalSection
+EndGlobal
