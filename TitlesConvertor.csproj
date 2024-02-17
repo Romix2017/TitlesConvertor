@@ -9,6 +9,14 @@
 
   <ItemGroup>
     <PackageReference Include="Google.Cloud.TextToSpeech.V1" Version="3.3.0" />
+    <PackageReference Include="NAudio" Version="2.2.1" />
+    <PackageReference Include="taglib-sharp-netstandard2.0" Version="2.1.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="api-key.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
   </ItemGroup>
 
 </Project>
