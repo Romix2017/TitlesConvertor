@@ -2,38 +2,65 @@
 using Google.Apis.Auth.OAuth2;
 using Google.Cloud.TextToSpeech.V1;
 using NAudio.Wave;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
+using TitlesConvertor;
 
 internal class Program
 {
     private static void Main(string[] args)
     {
+        TitleItem item1 = new TitleItem();
+        item1.Id = 1;
+        item1.Length = 4.68;
+        item1.Path = "1.mp3";
+        item1.Pause = 0;
+        item1.Text = "от имени команды Creation Ministries International благодарю вас за ваш первый визит";
 
-        //string firstFilePath = GetAudioFilePath("first.mp3");
-        //string secondFilePath = GetAudioFilePath("second.mp3");
-        //string mergedFilePath = GetAudioFilePath("merged.mp3");
-        //int pauseDurationInSeconds = 3;
+        TitleItem item2 = new TitleItem();
+        item2.Id = 2;
+        item2.Length = 7.64;
+        item2.Path = "2.mp3";
+        item2.Pause = 0;
+        item2.Text = "на сайт Creation.com. Создание или эволюция, дизайн или время и шанс, это основополагающий вопрос, который";
 
-        //MergeMp3Files(firstFilePath, secondFilePath, mergedFilePath, pauseDurationInSeconds);
+        TitleItem item3 = new TitleItem();
+        item3.Id = 3;
+        item3.Length = 4.96;
+        item3.Path = "3.mp3";
+        item3.Pause = 0;
+        item3.Text = "затрагивает каждого человека, и это потому, что то, во что вы верите относительно того, откуда мы пришли, влияет на ваше";
 
-        //Console.WriteLine("Files merged successfully.");
+        List<TitleItem> list = new List<TitleItem>();
+        list.Add(item1);
+        list.Add(item2);
+        list.Add(item3);
+
+        foreach (var item in list)
+        {
+            CreateFileFromText(item);
+        }
+
+
+        string mergedFilePath = "merged.mp3";
+
+        MergeMp3Files(list, mergedFilePath);
+
     }
 
-    static void CreateFileFromText()
+    static void CreateFileFromText(TitleItem item, double speakingRate = 1)
     {
+        Console.WriteLine("The function is called");
         TextToSpeechClient client = new TextToSpeechClientBuilder
         {
             CredentialsPath = GetApiKeyFilePath()
         }.Build();
 
-        // The text to be synthesized
-        string text = "от имени команды Creation Ministries International благодарю вас за ваш первый визит";
-
         // Perform the Text-to-Speech request
         SynthesisInput input = new SynthesisInput
         {
-            Text = text
+            Text = item.Text
         };
         VoiceSelectionParams voice = new VoiceSelectionParams
         {
@@ -44,50 +71,92 @@ internal class Program
         AudioConfig config = new AudioConfig
         {
             AudioEncoding = AudioEncoding.Mp3,
-            SpeakingRate = 1.0
+            SpeakingRate = speakingRate
         };
         var response = client.SynthesizeSpeech(input, voice, config);
 
         // Save the audio response to a file
-        using (var output = File.Create("output.mp3"))
+        using (var output = File.Create($"{item.Id}.mp3"))
         {
             response.AudioContent.WriteTo(output);
         }
-
-        using (var mp3File = TagLib.File.Create(GetAudioFilePath("output.mp3")))
+        TimeSpan durationFromApi;
+        using (var mp3File = TagLib.File.Create(GetAudioFilePath($"{item.Id}.mp3")))
         {
-            TimeSpan duration = mp3File.Properties.Duration;
-            Console.WriteLine($"MP3 file duration: {duration}");
+            durationFromApi = mp3File.Properties.Duration;
         }
+        TimeSpan shouldBeThisDuration = TimeSpan.FromSeconds(item.Length);
+
+        double additionalSeconds = 0.05;
+        TimeSpan negativeDurationFromApi = durationFromApi.Subtract(TimeSpan.FromSeconds(additionalSeconds));
+        TimeSpan positiveDurationFromApi = durationFromApi.Add(TimeSpan.FromSeconds(additionalSeconds));
+
+        if (shouldBeThisDuration < negativeDurationFromApi)
+        {
+            double rate = durationFromApi / shouldBeThisDuration;
+            if (speakingRate == 1)
+            {
+
+            }
+            else
+            {
+                rate += speakingRate;
+                rate--;
+            }
+            CreateFileFromText(item, rate);
+        }
+        if (shouldBeThisDuration > positiveDurationFromApi)
+        {
+            double rate = shouldBeThisDuration / durationFromApi;
+            if (speakingRate == 1)
+            {
+
+            }
+            else
+            {
+                rate -= speakingRate;
+                rate++;
+            }
+
+            CreateFileFromText(item, rate);
+        }
+
 
         Console.WriteLine("Speech synthesis complete. Output saved to output mp3.");
     }
 
-    static void MergeMp3Files(string firstFilePath, string secondFilePath, string mergedFilePath, int pauseDurationInSeconds)
+    static void MergeMp3Files(List<TitleItem> fileList, string mergedFilePath)
     {
-        using (var firstFileReader = new Mp3FileReader(firstFilePath))
-        using (var secondFileReader = new Mp3FileReader(secondFilePath))
+        if (fileList.Count == 0)
         {
-            var waveFormat = new WaveFormat(firstFileReader.WaveFormat.SampleRate, firstFileReader.WaveFormat.BitsPerSample, firstFileReader.WaveFormat.Channels);
-            using (var waveOutputStream = new WaveFileWriter(mergedFilePath, waveFormat))
+            throw new ArgumentException("File list is empty.");
+        }
+
+        using (var firstFileReader = new Mp3FileReader(fileList[0].Path))
+        {
+            var waveFormat = firstFileReader.WaveFormat;
+            using (var waveOutputStream = new WaveFileWriter(mergedFilePath, new WaveFormat(waveFormat.SampleRate, waveFormat.BitsPerSample, waveFormat.Channels)))
             {
-                // Write the first file
-                int bytesRead;
-                byte[] buffer = new byte[4096];
-                while ((bytesRead = firstFileReader.Read(buffer, 0, buffer.Length)) > 0)
+                foreach (var item in fileList)
                 {
-                    waveOutputStream.Write(buffer, 0, bytesRead);
-                }
+                    string filePath = item.Path;
+                    double pauseDurationInSeconds = item.Pause;
 
-                // Add pause between files
-                var pauseSamples = pauseDurationInSeconds * waveFormat.SampleRate;
-                var silence = new byte[pauseSamples];
-                waveOutputStream.Write(silence, 0, silence.Length);
+                    using (var fileReader = new Mp3FileReader(filePath))
+                    {
+                        // Write the file
+                        int bytesRead;
+                        byte[] buffer = new byte[4096];
+                        while ((bytesRead = fileReader.Read(buffer, 0, buffer.Length)) > 0)
+                        {
+                            waveOutputStream.Write(buffer, 0, bytesRead);
+                        }
 
-                // Write the second file
-                while ((bytesRead = secondFileReader.Read(buffer, 0, buffer.Length)) > 0)
-                {
-                    waveOutputStream.Write(buffer, 0, bytesRead);
+                        // Add pause between files
+                        var pauseSamples = (int)(pauseDurationInSeconds * waveFormat.SampleRate);
+                        var silence = new byte[pauseSamples];
+                        waveOutputStream.Write(silence, 0, silence.Length);
+                    }
                 }
             }
         }
