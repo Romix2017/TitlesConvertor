@@ -159,7 +159,7 @@ internal class Program
         }
         if (shouldBeThisDuration > positiveDurationFromApi)
         {
-            double rate = shouldBeThisDuration / durationFromApi;
+            double rate =  durationFromApi / shouldBeThisDuration;
             if (speakingRate == 1)
             {
 
@@ -167,7 +167,7 @@ internal class Program
             else
             {
                 rate -= speakingRate;
-                rate++;
+                rate = speakingRate - rate;
             }
 
             CreateFileFromText(item, rate);
