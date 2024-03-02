@@ -13,5 +13,6 @@ namespace TitlesConvertor
         public string Text { get; set; }
         public string Path { get; set; }
         public double Pause { get; set; }
+        public double FirstItemPause { get; set; }
     }
 }

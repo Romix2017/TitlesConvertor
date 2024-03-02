@@ -11,42 +11,94 @@ internal class Program
 {
     private static void Main(string[] args)
     {
-        TitleItem item1 = new TitleItem();
-        item1.Id = 1;
-        item1.Length = 4.68;
-        item1.Path = "1.mp3";
-        item1.Pause = 0;
-        item1.Text = "от имени команды Creation Ministries International благодарю вас за ваш первый визит";
 
-        TitleItem item2 = new TitleItem();
-        item2.Id = 2;
-        item2.Length = 7.64;
-        item2.Path = "2.mp3";
-        item2.Pause = 0;
-        item2.Text = "на сайт Creation.com. Создание или эволюция, дизайн или время и шанс, это основополагающий вопрос, который";
-
-        TitleItem item3 = new TitleItem();
-        item3.Id = 3;
-        item3.Length = 4.96;
-        item3.Path = "3.mp3";
-        item3.Pause = 0;
-        item3.Text = "затрагивает каждого человека, и это потому, что то, во что вы верите относительно того, откуда мы пришли, влияет на ваше";
-
-        List<TitleItem> list = new List<TitleItem>();
-        list.Add(item1);
-        list.Add(item2);
-        list.Add(item3);
+        List<TitleItem> list = Parse("captions.sbv");
+        MergeItemsWithZeroPause(list);
 
         foreach (var item in list)
         {
             CreateFileFromText(item);
         }
 
-
         string mergedFilePath = "merged.mp3";
 
         MergeMp3Files(list, mergedFilePath);
 
+    }
+    static void MergeItemsWithZeroPause(List<TitleItem> items)
+    {
+        for (int i = 0; i < items.Count - 1; i++)
+        {
+            if (items[i].Pause == 0)
+            {
+                items[i].Text += " " + items[i + 1].Text;
+                items[i].Length += items[i + 1].Length;
+                items[i].Pause = items[i + 1].Pause;
+                // Remove the next item
+                items.RemoveAt(i + 1);
+                // Decrement the counter to revisit the current index since items shifted after removal
+                i--;
+            }
+        }
+    }
+    private string[] RemoveEmptyLines(string[] lines)
+    {
+        string[] res = new string[] { };
+        foreach (var item in lines)
+        {
+            if (string.IsNullOrEmpty(item)) continue;
+            res.Prepend(item);
+        }
+        return res;
+    }
+    public static List<TitleItem> Parse(string filePath)
+    {
+        List<TitleItem> titleItems = new List<TitleItem>();
+        string[] lines = File.ReadAllLines(filePath);
+
+        double previousEndTime = 0.0;
+
+        for (int i = 0; i < lines.Length; i += 3)
+        {
+            string timeInfo = lines[i];
+            string text = lines[i + 1];
+
+            string[] timeParts = timeInfo.Split(',');
+            string[] startTimeParts = timeParts[0].Split(':');
+            string[] endTimeParts = timeParts[1].Split(':');
+
+            TimeSpan startTime = TimeSpan.ParseExact(timeParts[0], "h\\:mm\\:ss\\.fff", null);
+            TimeSpan endTime = TimeSpan.ParseExact(timeParts[1], "h\\:mm\\:ss\\.fff", null);
+
+            double length = (endTime - startTime).TotalSeconds;
+
+            int id = i / 2 + 1;
+
+            double pause = 0;
+
+            if (i < lines.Length - 3)
+            {
+                string[] nextTimeParts = lines[i + 3].Split(',');
+                TimeSpan nextStartTime = TimeSpan.ParseExact(nextTimeParts[0], "h\\:mm\\:ss\\.fff", null);
+                pause = (nextStartTime - endTime).TotalSeconds;
+            }
+
+            TitleItem titleItem = new TitleItem
+            {
+                Id = id,
+                FirstItemPause = id == 1 ? startTime.TotalSeconds : 0,
+                Length = length,
+                Text = text,
+                Path = $"{i / 2 + 1}.mp3",
+                Pause = pause
+            };
+
+            titleItems.Add(titleItem);
+
+            previousEndTime = endTime.TotalSeconds;
+        }
+
+        return titleItems;
     }
 
     static void CreateFileFromText(TitleItem item, double speakingRate = 1)
@@ -144,6 +196,13 @@ internal class Program
 
                     using (var fileReader = new Mp3FileReader(filePath))
                     {
+                        if (item.Id == 1)
+                        {
+                            // Add pause between files
+                            var pauseSamples = (int)(pauseDurationInSeconds * waveFormat.SampleRate);
+                            var silence = new byte[pauseSamples];
+                            waveOutputStream.Write(silence, 0, silence.Length);
+                        }
                         // Write the file
                         int bytesRead;
                         byte[] buffer = new byte[4096];
@@ -151,11 +210,13 @@ internal class Program
                         {
                             waveOutputStream.Write(buffer, 0, bytesRead);
                         }
-
-                        // Add pause between files
-                        var pauseSamples = (int)(pauseDurationInSeconds * waveFormat.SampleRate);
-                        var silence = new byte[pauseSamples];
-                        waveOutputStream.Write(silence, 0, silence.Length);
+                        if (item.Id > 1)
+                        {
+                            // Add pause between files
+                            var pauseSamples = (int)(pauseDurationInSeconds * waveFormat.SampleRate);
+                            var silence = new byte[pauseSamples];
+                            waveOutputStream.Write(silence, 0, silence.Length);
+                        }
                     }
                 }
             }
